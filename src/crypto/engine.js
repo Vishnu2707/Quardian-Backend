@@ -64,16 +64,25 @@ export function signMessage(message) {
  * Verifies Ed25519 signature
  */
 export function verifySignature(message, publicKeyB64, signatureB64) {
-  const data = Buffer.from(message, "utf8");
-  const publicKeyDer = Buffer.from(publicKeyB64, "base64");
-  const signature = Buffer.from(signatureB64, "base64");
+  try {
+    const data = Buffer.from(message, "utf8");
 
-  const publicKey = crypto.createPublicKey({
-    key: publicKeyDer,
-    format: "der",
-    type: "spki",
-  });
+    // Convert base64 DER back to usable key
+    const publicKeyDer = Buffer.from(publicKeyB64, "base64");
 
-  const valid = crypto.verify(null, data, publicKey, signature);
-  return valid;
+    const publicKey = crypto.createPublicKey({
+      key: publicKeyDer,
+      format: "der",
+      type: "spki", // Standard for Ed25519
+    });
+
+    const signature = Buffer.from(signatureB64, "base64");
+    const valid = crypto.verify(null, data, publicKey, signature);
+
+    return valid;
+  } catch (err) {
+    console.error("Verification error:", err.message);
+    throw new Error("Failed to verify signature: " + err.message);
+  }
 }
+
