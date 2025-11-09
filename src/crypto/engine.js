@@ -2,8 +2,8 @@
 import crypto from "crypto";
 
 /**
- * AES-GCM encryption demo — placeholder for PQC layer
- * Generates a one-time key, performs encryption in-memory (not stored)
+ * AES-GCM encryption — demo placeholder for PQC layer.
+ * Generates a one-time key, performs encryption fully in-memory.
  */
 export function encryptData(plainText, algorithm = "AES-GCM") {
   const key = crypto.randomBytes(32); // 256-bit key
@@ -22,12 +22,12 @@ export function encryptData(plainText, algorithm = "AES-GCM") {
     iv: iv.toString("base64"),
     tag: tag.toString("base64"),
     ciphertext: encrypted.toString("base64"),
-    key: key.toString("base64"),
+    key: key.toString("base64"), // returned only once
   };
 }
 
 /**
- * AES-GCM decryption demo — takes ciphertext + key + IV + tag
+ * AES-GCM decryption — takes ciphertext + key + IV + tag
  */
 export function decryptData(ciphertext, key, iv, tag) {
   const decipher = crypto.createDecipheriv(
@@ -43,4 +43,37 @@ export function decryptData(ciphertext, key, iv, tag) {
   ]);
 
   return decrypted.toString("utf8");
+}
+
+/**
+ * Ed25519 demo signature — simulates PQC signing (Dilithium/Falcon placeholder)
+ */
+export function signMessage(message) {
+  const { publicKey, privateKey } = crypto.generateKeyPairSync("ed25519");
+  const data = Buffer.from(message, "utf8");
+  const signature = crypto.sign(null, data, privateKey);
+
+  return {
+    scheme: "Ed25519 (demo placeholder for PQC signatures)",
+    publicKey: publicKey.export({ type: "spki", format: "der" }).toString("base64"),
+    signature: signature.toString("base64"),
+  };
+}
+
+/**
+ * Verifies Ed25519 signature
+ */
+export function verifySignature(message, publicKeyB64, signatureB64) {
+  const data = Buffer.from(message, "utf8");
+  const publicKeyDer = Buffer.from(publicKeyB64, "base64");
+  const signature = Buffer.from(signatureB64, "base64");
+
+  const publicKey = crypto.createPublicKey({
+    key: publicKeyDer,
+    format: "der",
+    type: "spki",
+  });
+
+  const valid = crypto.verify(null, data, publicKey, signature);
+  return valid;
 }
