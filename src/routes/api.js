@@ -1,65 +1,60 @@
-import { Router } from "express";
+// src/routes/api.js
+import express from "express";
 import { z } from "zod";
-import Job from "../models/Job.js";
-import { encryptHybrid, decryptHybrid } from "../crypto/engine.js";
+import { encryptData, decryptData } from "../crypto/engine.js";
+import Job from "../models/job.js";
 
-const r = Router();
 
-/** POST /api/encrypt */
-r.post("/encrypt", async (req, res) => {
+const router = express.Router();
+
+// ✅ Correct validation schema
+const EncryptSchema = z.object({
+  text: z.string().min(1, "Text is required"),
+  algorithm: z.string().default("AES-GCM"),
+});
+
+const DecryptSchema = z.object({
+  ciphertext: z.string(),
+  key: z.string(),
+  iv: z.string(),
+  tag: z.string(),
+});
+
+router.post("/encrypt", async (req, res) => {
   try {
-    const body = z.object({
-      data: z.string().min(1),
-      scheme: z.string().default("AES-GCM") // UI may send Kyber/Dilithium later
-    }).parse(req.body);
+    // ✅ Extract fields correctly
+    const { text, algorithm } = EncryptSchema.parse(req.body);
 
-    const result = await encryptHybrid(body.data, body.scheme);
+    // Perform encryption
+    const result = encryptData(text, algorithm);
 
-    // store only metadata
+    // Optional: store metadata
     await Job.create({
-      type: "encrypt",
-      scheme: body.scheme,
-      payloadBytes: Buffer.byteLength(body.data, "utf8"),
-      resultBytes: Buffer.byteLength(result.ciphertext, "base64")
+      scheme: result.algorithm,
+      timestamp: new Date(),
+      length: result.ciphertext.length,
     });
 
-    res.json({ ok: true, result });
-  } catch (e) {
-    res.status(400).json({ ok: false, error: e.message });
+    // ✅ Respond to client
+    res.json({
+      ok: true,
+      message: "Encryption successful",
+      ...result,
+    });
+  } catch (err) {
+    console.error("Encryption error:", err.message);
+    res.status(400).json({ ok: false, error: err.message });
   }
 });
 
-/** POST /api/decrypt */
-r.post("/decrypt", async (req, res) => {
+router.post("/decrypt", async (req, res) => {
   try {
-    const body = z.object({
-      ciphertext: z.string(),
-      iv: z.string(),
-      tag: z.string(),
-      key: z.string()
-    }).parse(req.body);
-
-    const plaintext = await decryptHybrid(body);
-
-    await Job.create({
-      type: "decrypt",
-      scheme: "AES-GCM",
-      payloadBytes: Buffer.byteLength(body.ciphertext, "base64"),
-      resultBytes: Buffer.byteLength(plaintext, "utf8")
-    });
-
-    res.json({ ok: true, plaintext });
-  } catch (e) {
-    res.status(400).json({ ok: false, error: e.message });
+    const { ciphertext, key, iv, tag } = DecryptSchema.parse(req.body);
+    const plainText = decryptData(ciphertext, key, iv, tag);
+    res.json({ ok: true, message: "Decryption successful", plainText });
+  } catch (err) {
+    res.status(400).json({ ok: false, error: err.message });
   }
 });
 
-/** GET /api/metrics */
-r.get("/metrics", async (_req, res) => {
-  const total = await Job.countDocuments();
-  const enc = await Job.countDocuments({ type: "encrypt" });
-  const dec = await Job.countDocuments({ type: "decrypt" });
-  res.json({ ok: true, total, encrypts: enc, decrypts: dec });
-});
-
-export default r;
+export default router;

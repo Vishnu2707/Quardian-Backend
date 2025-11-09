@@ -3,8 +3,11 @@ import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
-import { connectMongo } from "./db/mongo.js";
-import api from "./routes/api.js";
+import { connectMongo } from "./src/db/mongo.js";
+import api from "./src/routes/api.js";
+import dotenv from "dotenv";
+dotenv.config();
+
 
 const app = express();
 

@@ -1,35 +1,46 @@
+// src/crypto/engine.js
 import crypto from "crypto";
 
-// Helpers
-const b64 = (buf) => Buffer.from(buf).toString("base64");
-const ub64 = (s) => Buffer.from(s, "base64");
-
-// --- Encrypt (baseline). Later, plug PQC KEM here and keep the API shape.
-export async function encryptHybrid(plaintext, scheme = "AES-GCM") {
-  const key = crypto.randomBytes(32);       // ephemeral 256-bit
-  const iv = crypto.randomBytes(12);        // 96-bit GCM nonce
+/**
+ * AES-GCM encryption demo — placeholder for PQC layer
+ * Generates a one-time key, performs encryption in-memory (not stored)
+ */
+export function encryptData(plainText, algorithm = "AES-GCM") {
+  const key = crypto.randomBytes(32); // 256-bit key
+  const iv = crypto.randomBytes(12);  // GCM IV size
   const cipher = crypto.createCipheriv("aes-256-gcm", key, iv);
-  const enc = Buffer.concat([cipher.update(plaintext, "utf8"), cipher.final()]);
+
+  const encrypted = Buffer.concat([
+    cipher.update(plainText, "utf8"),
+    cipher.final()
+  ]);
+
   const tag = cipher.getAuthTag();
 
   return {
-    scheme,
-    ciphertext: b64(enc),
-    iv: b64(iv),
-    tag: b64(tag),
-    key: b64(key)   // returned to caller for demo; not stored server-side
+    algorithm,
+    iv: iv.toString("base64"),
+    tag: tag.toString("base64"),
+    ciphertext: encrypted.toString("base64"),
+    key: key.toString("base64"),
   };
 }
 
-export async function decryptHybrid({ ciphertext, iv, tag, key }) {
-  const decipher = crypto.createDecipheriv("aes-256-gcm", ub64(key), ub64(iv));
-  decipher.setAuthTag(ub64(tag));
-  const dec = Buffer.concat([decipher.update(ub64(ciphertext)), decipher.final()]);
-  return dec.toString("utf8");
-}
-
-/*
- * 🔁 When you’re ready for PQC:
- * - Derive `key` via Kyber KEM (encapsulate → shared secret) instead of randomBytes.
- * - Keep the returned object shape identical so the frontend stays unchanged.
+/**
+ * AES-GCM decryption demo — takes ciphertext + key + IV + tag
  */
+export function decryptData(ciphertext, key, iv, tag) {
+  const decipher = crypto.createDecipheriv(
+    "aes-256-gcm",
+    Buffer.from(key, "base64"),
+    Buffer.from(iv, "base64")
+  );
+  decipher.setAuthTag(Buffer.from(tag, "base64"));
+
+  const decrypted = Buffer.concat([
+    decipher.update(Buffer.from(ciphertext, "base64")),
+    decipher.final()
+  ]);
+
+  return decrypted.toString("utf8");
+}

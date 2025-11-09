@@ -1,13 +1,12 @@
+// src/models/job.js
 import mongoose from "mongoose";
 
-const JobSchema = new mongoose.Schema(
-  {
-    type: { type: String, enum: ["encrypt", "decrypt"], required: true },
-    scheme: { type: String, default: "AES-GCM", index: true },
-    payloadBytes: Number,
-    resultBytes: Number
-  },
-  { timestamps: true }
-);
+const jobSchema = new mongoose.Schema({
+  scheme: String,
+  timestamp: Date,
+  length: Number,
+});
 
-export default mongoose.model("Job", JobSchema);
+// Default export, not named
+const Job = mongoose.model("Job", jobSchema);
+export default Job;
