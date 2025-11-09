@@ -6,29 +6,56 @@ import morgan from "morgan";
 import { connectMongo } from "./src/db/mongo.js";
 import api from "./src/routes/api.js";
 import dotenv from "dotenv";
-dotenv.config();
 
+dotenv.config();
 
 const app = express();
 
-// CORS: allow your GH Pages (add others separated by commas)
-const origins = (process.env.ALLOWED_ORIGIN || "").split(",").map(s => s.trim()).filter(Boolean);
+// -----------------------------
+// CORS CONFIGURATION
+// -----------------------------
+const allowedOrigins = [
+  "https://vishnu2707.github.io", // your frontend on GitHub Pages
+  "http://localhost:8080",        // local testing
+  "http://127.0.0.1:8080"
+];
+
 app.use(cors({
   origin: (origin, cb) => {
-    if (!origin) return cb(null, true); // curl/postman
-    return origins.includes(origin) ? cb(null, true) : cb(new Error("CORS blocked"));
+    // allow requests with no origin (e.g., Postman or curl)
+    if (!origin) return cb(null, true);
+    if (allowedOrigins.includes(origin)) return cb(null, true);
+    return cb(new Error("CORS blocked: " + origin));
   },
   credentials: false
 }));
 
+// -----------------------------
+// SECURITY + LOGGING
+// -----------------------------
 app.use(helmet({ crossOriginEmbedderPolicy: false }));
 app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
 app.use(express.json({ limit: "1mb" }));
 
-app.get("/", (_req, res) => res.json({ ok: true, name: "Quardian-Safe API" }));
+// -----------------------------
+// ROUTES
+// -----------------------------
+app.get("/", (_req, res) => {
+  res.json({ ok: true, name: "Quardian-Safe API", message: "Backend running successfully." });
+});
+
 app.use("/api", api);
 
+// -----------------------------
+// SERVER + MONGO CONNECTION
+// -----------------------------
 const port = process.env.PORT || 8080;
+
 connectMongo(process.env.MONGO_URI)
-  .then(() => app.listen(port, () => console.log(`API on :${port}`)))
-  .catch((e) => { console.error(e); process.exit(1); });
+  .then(() => {
+    app.listen(port, () => console.log(`Quardian API live on port ${port}`));
+  })
+  .catch((err) => {
+    console.error("MongoDB connection failed:", err.message);
+    process.exit(1);
+  });
