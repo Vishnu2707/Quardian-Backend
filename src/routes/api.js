@@ -4,9 +4,20 @@ import { z } from "zod";
 import { encryptData, decryptData, signMessage, verifySignature } from "../crypto/engine.js";
 import Job from "../models/job.js";
 
+// ✅ Import metrics
+import {
+  encryptCounter,
+  decryptCounter,
+  verifyCounter,
+  signCounter,
+  lastCipherLen,
+} from "../metrics/metrics.js";
+
 const router = express.Router();
 
-// ========== Schemas ==========
+// ==============================
+// Validation Schemas
+// ==============================
 const EncryptSchema = z.object({
   text: z.string().min(1, "Text is required"),
   algorithm: z.string().default("AES-GCM"),
@@ -29,12 +40,19 @@ const VerifySchema = z.object({
   signature: z.string().min(1),
 });
 
-// ========== Encrypt ==========
+// ==============================
+// Encrypt
+// ==============================
 router.post("/encrypt", async (req, res) => {
   try {
     const { text, algorithm } = EncryptSchema.parse(req.body);
     const result = encryptData(text, algorithm);
 
+    // Increment metrics
+    encryptCounter.inc();
+    lastCipherLen.set(Buffer.from(result.ciphertext, "base64").length);
+
+    // Store metadata (optional)
     await Job.create({
       kind: "encrypt",
       scheme: algorithm,
@@ -48,11 +66,16 @@ router.post("/encrypt", async (req, res) => {
   }
 });
 
-// ========== Decrypt ==========
+// ==============================
+// Decrypt
+// ==============================
 router.post("/decrypt", async (req, res) => {
   try {
     const { ciphertext, key, iv, tag } = DecryptSchema.parse(req.body);
     const plainText = decryptData(ciphertext, key, iv, tag);
+
+    // Increment metrics
+    decryptCounter.inc();
 
     await Job.create({
       kind: "decrypt",
@@ -67,11 +90,16 @@ router.post("/decrypt", async (req, res) => {
   }
 });
 
-// ========== Sign (demo PQC placeholder) ==========
+// ==============================
+// Sign (demo PQC placeholder)
+// ==============================
 router.post("/sign", async (req, res) => {
   try {
     const { message } = SignSchema.parse(req.body);
     const result = signMessage(message);
+
+    // Increment metrics
+    signCounter.inc();
 
     await Job.create({
       kind: "sign",
@@ -86,11 +114,16 @@ router.post("/sign", async (req, res) => {
   }
 });
 
-// ========== Verify (demo PQC placeholder) ==========
+// ==============================
+// Verify (demo PQC placeholder)
+// ==============================
 router.post("/verify", async (req, res) => {
   try {
     const { message, publicKey, signature } = VerifySchema.parse(req.body);
     const valid = verifySignature(message, publicKey, signature);
+
+    // Increment metrics
+    verifyCounter.inc();
 
     await Job.create({
       kind: "verify",
