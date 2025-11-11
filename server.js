@@ -19,22 +19,28 @@ const app = express();
 // -----------------------------
 // CORS CONFIGURATION
 // -----------------------------
+// -----------------------------
+// CORS CONFIGURATION
+// -----------------------------
 const allowedOrigins = [
-  "https://vishnu2707.github.io", // GitHub Pages frontend
-  "http://localhost:8080",        // local testing
+  "https://vishnu2707.github.io", // Production frontend (GitHub Pages)
+  "http://127.0.0.1:5500",        // Local development via Live Server
+  "http://localhost:5500",        // Local development (alt URL)
+  "http://localhost:8080",        // backend local test
   "http://127.0.0.1:8080"
 ];
 
-app.use(
-  cors({
-    origin: (origin, cb) => {
-      if (!origin) return cb(null, true);
-      if (allowedOrigins.includes(origin)) return cb(null, true);
-      return cb(new Error("CORS blocked: " + origin));
-    },
-    credentials: false,
-  })
-);
+app.use(cors({
+  origin: (origin, cb) => {
+    // allow requests with no origin (like Postman or server-to-server)
+    if (!origin) return cb(null, true);
+    if (allowedOrigins.includes(origin)) return cb(null, true);
+    console.warn("CORS blocked origin:", origin);
+    return cb(new Error("CORS blocked: " + origin));
+  },
+  credentials: true
+}));
+
 
 // -----------------------------
 // SECURITY + LOGGING
